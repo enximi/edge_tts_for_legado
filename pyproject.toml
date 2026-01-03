@@ -3,5 +3,10 @@ name = "edge-tts-for-legado"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.14"
-dependencies = []
+requires-python = ">=3.12"
+dependencies = [
+    "edge-tts>=6.1.18",
+    "fastapi>=0.115.6",
+    "uvicorn>=0.34.0",
+    "jinja2>=3.1.5",
+]
