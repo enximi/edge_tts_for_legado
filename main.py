@@ -1,9 +1,16 @@
-import edge_tts
+import os
 
+import edge_tts
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
+
+load_dotenv()
+API_KEY = os.getenv("API_KEY")
+if not API_KEY:
+    raise ValueError("API_KEY environment variable is required but not set.")
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -14,8 +21,29 @@ class TTSRequest(BaseModel):
     rate: int = 15
 
 
-@app.post("/tts")
-async def tts_endpoint(request: TTSRequest):
+async def verify_query_api_key(request: Request) -> bool:
+    # Check query param (for config url mainly)
+    api_key_query = request.query_params.get("api_key")
+    if api_key_query == API_KEY:
+        return True
+    return False
+
+
+async def verify_header_api_key(request: Request) -> bool:
+    # Check header
+    auth_header = request.headers.get("Authorization")
+    if auth_header:
+        scheme, _, param = auth_header.partition(" ")
+        if scheme.lower() == "bearer" and param == API_KEY:
+            return True
+    return False
+
+
+@app.post("/tts", dependencies=[])
+async def tts_endpoint(request: TTSRequest, req: Request):
+    if not await verify_header_api_key(req):
+        raise HTTPException(status_code=401, detail="Invalid API Key")
+
     """
     Stream audio from edge-tts.
     Legado passes rate as int 5-50, default 15.
@@ -46,6 +74,9 @@ async def tts_endpoint(request: TTSRequest):
 
 @app.get("/config")
 async def get_config(request: Request):
+    if not await verify_query_api_key(request):
+        raise HTTPException(status_code=401, detail="Invalid API Key")
+
     """
     Return the Legado configuration.
     Dynamically replaces the host in the URL with the request's host.
@@ -64,10 +95,13 @@ async def get_config(request: Request):
     # Request config
     req_config = f'{{"method": "POST", "body": "{body_str}"}}'
 
+    # Add Authorization header to the Legado config
+    header_str = f'{{\n"Content-Type": "application/json",\n"Authorization": "Bearer {API_KEY}"\n}}'
+
     config = {
         "concurrentRate": "1000",
         "contentType": "audio/mpeg",
-        "header": '{\n"Content-Type": "application/json"\n}',
+        "header": header_str,
         "id": 1735914000000,
         "loginCheckJs": "",
         "loginUi": "",
