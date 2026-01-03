@@ -81,10 +81,14 @@ async def get_config(request: Request):
     Return the Legado configuration.
     Dynamically replaces the host in the URL with the request's host.
     """
+
     host = request.headers.get("host") or "localhost:8000"
+    scheme = request.headers.get("x-forwarded-proto") or request.url.scheme
+    if not scheme:
+        scheme = "http"
 
     # Construct the URL for the TTS endpoint
-    tts_url = f"http://{host}/tts"
+    tts_url = f"{scheme}://{host}/tts"
 
     # Legado config format: url,{"method": "POST", "body": "..."}
     # We manually construct the strings to avoid double-escaping issues.
