@@ -1,5 +1,5 @@
 import edge_tts
-import json
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
@@ -53,22 +53,27 @@ async def get_config(request: Request):
     host = request.headers.get("host") or "localhost:8000"
 
     # Construct the URL for the TTS endpoint
-    # Note: Legado requires the URL to be http://...
-    # The body template strictly follows Legado's requirement
     tts_url = f"http://{host}/tts"
 
-    # Define the JSON body pattern Legado should send
-    # We inline everything for compactness as requested
+    # Legado config format: url,{"method": "POST", "body": "..."}
+    # We manually construct the strings to avoid double-escaping issues.
+
+    # Body: {{speakSpeed}} is an int, so no quotes. Inner quotes must be escaped.
+    body_str = '{\\"text\\": \\"{{speakText}}\\", \\"rate\\": {{speakSpeed}}}'
+
+    # Request config
+    req_config = f'{{"method": "POST", "body": "{body_str}"}}'
+
     config = {
         "concurrentRate": "1000",
         "contentType": "audio/mpeg",
-        "header": json.dumps({"Content-Type": "application/json"}),
+        "header": '{\n"Content-Type": "application/json"\n}',
         "id": 1735914000000,
         "loginCheckJs": "",
         "loginUi": "",
         "loginUrl": "",
         "name": "EdgeTTS for Legado",
-        "url": f"{tts_url},{json.dumps({'method': 'POST', 'body': json.dumps({'text': '{{speakText}}', 'rate': '{{speakSpeed}}'})})}",
+        "url": f"{tts_url},{req_config}",
     }
 
     return JSONResponse(content=config)
