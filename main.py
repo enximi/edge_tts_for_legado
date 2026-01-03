@@ -3,7 +3,7 @@ import os
 import edge_tts
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
@@ -123,3 +123,8 @@ async def index(request: Request):
     Web page with one-click import button.
     """
     return templates.TemplateResponse(request=request, name="index.html")
+
+
+@app.api_route("/favicon.ico", methods=["GET", "HEAD"], include_in_schema=False)
+async def favicon():
+    return Response(status_code=204)
