@@ -9,8 +9,12 @@ from pydantic import BaseModel
 
 load_dotenv()
 API_KEY = os.getenv("API_KEY")
+PORT = os.getenv("PORT")
 if not API_KEY:
     raise ValueError("API_KEY environment variable is required but not set.")
+if not PORT:
+    raise ValueError("PORT environment variable is required but not set.")
+PORT = int(PORT)
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
@@ -128,3 +132,10 @@ async def index(request: Request):
 @app.api_route("/favicon.ico", methods=["GET", "HEAD"], include_in_schema=False)
 async def favicon():
     return Response(status_code=204)
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    print(f"Starting Edge TTS for Legado on port {PORT}")
+    uvicorn.run(app, host="127.0.0.1", port=PORT)
