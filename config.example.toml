@@ -1,0 +1,21 @@
+[server]
+host = "127.0.0.1"
+port = 8000
+
+[auth]
+token = "change_me"
+
+[log]
+directory = "logs"
+file_name = "app.log"
+max_file_size_mb = 50
+max_keep_files = 10
+stdout = true
+
+[tts]
+voice = "zh-CN-XiaoxiaoNeural"
+request_timeout_secs = 30
+
+[tts.retry]
+max_attempts = 3
+initial_backoff_ms = 1000

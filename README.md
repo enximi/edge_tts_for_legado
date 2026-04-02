@@ -1,59 +1,315 @@
-# Edge TTS for Legado
+# EdgeTTS for Legado
 
-这是一个为 [阅读 (Legado)](https://github.com/gedoor/legado) 设计的 Microsoft Edge TTS 代理服务。它基于 [edge-tts](https://github.com/rany2/edge-tts) Python 库，可以将高品质的流式语音集成到阅读 App 中。
+[简体中文](./README.zh-CN.md)
 
-## 功能特点
+A self-hosted HTTP TTS bridge for [Legado](https://github.com/gedoor/legado), powered by Rust and Microsoft Edge voices.
 
-- **高质量语音**：基于 `edge-tts` 库调用 Microsoft Edge TTS API，支持 `zh-CN-XiaoxiaoNeural`（晓晓）等优秀音效。
-- **集成导入**：内置 Web 界面，支持一键将配置导入到 Legado。
-- **API 安全**：支持通过 `API_KEY` 进行简单的身份验证。
+This project is for people who want to use Edge TTS inside Legado through a small service they control themselves.
 
-## 快速开始
+## What It Does
 
-### 前置要求
+- Exposes a `POST /tts` endpoint that returns `audio/mpeg`
+- Exposes a `GET /config?token=...` endpoint that generates a Legado HTTP TTS config
+- Exposes a minimal `GET /` import page for mobile browsers
+- Translates Legado speech rate values to Edge TTS rate values
+- Retries temporary upstream synthesis failures
 
-- Python 3.12+
-- [uv](https://github.com/astral-sh/uv) (推荐的 Python 包管理工具)
+## Project Status
 
-### 运行步骤
+This project is usable today for personal deployment.
 
-1. **克隆项目**：
+Current scope:
 
-   ```bash
-   git clone <repository-url>
-   cd edge_tts_for_legado
-   ```
+- single-user or small private deployments
+- local network, reverse proxy, or self-hosted server setups
+- simple token-based authentication
 
-2. **配置环境变量**：
-   创建 `.env` 文件并设置你的 `API_KEY`：
+Non-goals for now:
 
-   ```bash
-   echo "API_KEY=your_secret_key" > .env
-   ```
+- multi-user account systems
+- a general-purpose TTS platform
+- a public SaaS-style deployment model
 
-3. **安装依赖并启动**：
+## How It Works
 
-   ```bash
-   uv run uvicorn main:app --host 0.0.0.0 --port 8000
-   ```
+```text
+Browser -> GET /config?token=...
+        -> import into Legado
 
-## 配置说明
+Legado -> POST /tts
+       -> this service
+       -> Edge TTS upstream
+       -> audio/mpeg back to Legado
+```
 
-### 环境变量
+## Features
 
-| 变量名    | 说明                           | 示例                |
-| :-------- | :----------------------------- | :------------------ |
-| `API_KEY` | 用于身份验证的密钥。必须设置。 | `my_secure_api_key` |
+- Rust + `axum` service with a small runtime footprint
+- `edge-tts-rust` integration
+- full-audio response mode instead of proxy-streaming partial audio
+- exponential backoff retry for transient upstream failures
+- total timeout budget per synthesis request
+- configuration from `config.toml` with environment-variable overrides
+- rotating log files using `tracing` and `logroller`
+- Docker support for Linux deployment
 
-### 在 Legado 中配置
+## Quick Start
 
-1. **一键导入（推荐）**：
-   在手机浏览器访问 `http://<your-server-ip>:8000/`，点击页面上的“导入到阅读”按钮（需在手机端操作，且已安装 Legado）。
+1. Clone the repository.
 
-2. **手动导入**：
-   将以下 URL 添加到 Legado 的语音引擎配置中：
-   `http://<your-server-ip>:8000/config?api_key=your_secret_key`
+```powershell
+git clone https://github.com/enximi/edge_tts_for_legado.git
+cd edge_tts_for_legado
+```
 
-## 许可证
+2. Create a config file.
 
-MIT License
+```powershell
+Copy-Item config.example.toml config.toml
+```
+
+3. Set a token in `config.toml`.
+
+```toml
+[auth]
+token = "replace_this_with_a_long_random_token"
+```
+
+4. Start the service.
+
+```powershell
+cargo run
+```
+
+5. Open the import page in your phone browser.
+
+```text
+http://<your-server>:8000/
+```
+
+Enter the token, tap import, and Legado will import the generated HTTP TTS profile.
+
+## Requirements
+
+- a network environment that can reach the Edge TTS upstream
+- Rust if you want to run from source
+- Legado if you want to use the generated config
+
+## Configuration
+
+Configuration is loaded in this order:
+
+1. built-in defaults
+2. `config.toml`
+3. environment variables
+
+That means environment variables override `config.toml`.
+
+### Required Setting
+
+The service will not start unless `auth.token` is configured.
+
+You can set it either in `config.toml`:
+
+```toml
+[auth]
+token = "your_token"
+```
+
+or through an environment variable:
+
+```powershell
+$env:APP__AUTH__TOKEN="your_token"
+```
+
+If the token is missing or blank, startup fails by design.
+
+### Example Config
+
+See [`config.example.toml`](./config.example.toml).
+
+### Optional `.env`
+
+For local development, you can also use `.env`:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+This is just a convenience layer for environment variables. It is not the primary configuration format.
+
+### Environment Variables
+
+| Variable | Description | Default |
+| --- | --- | --- |
+| `APP__AUTH__TOKEN` | Shared auth token for `/config` and `/tts` | none |
+| `APP__SERVER__HOST` | Bind host | `127.0.0.1` |
+| `APP__SERVER__PORT` | Bind port | `8000` |
+| `APP__LOG__DIRECTORY` | Log directory | `logs` |
+| `APP__LOG__FILE_NAME` | Base log file name | `app.log` |
+| `APP__LOG__MAX_FILE_SIZE_MB` | Max size per log file | `50` |
+| `APP__LOG__MAX_KEEP_FILES` | Max rotated log files to keep | `10` |
+| `APP__LOG__STDOUT` | Also write logs to stdout | `true` |
+| `APP__TTS__VOICE` | Default Edge voice | `zh-CN-XiaoxiaoNeural` |
+| `APP__TTS__RETRY__MAX_ATTEMPTS` | Max synthesis attempts | `3` |
+| `APP__TTS__RETRY__INITIAL_BACKOFF_MS` | Initial retry backoff in ms | `1000` |
+| `APP__TTS__REQUEST_TIMEOUT_SECS` | Total timeout budget per request | `30` |
+
+## Running From Source
+
+```powershell
+cargo run
+```
+
+Release build:
+
+```powershell
+cargo build --release
+.\target\release\edge-tts-for-legado.exe
+```
+
+## Docker
+
+Build the image:
+
+```powershell
+docker build -t edge-tts-for-legado .
+```
+
+Run it with a mounted config file:
+
+```powershell
+docker run -d `
+  --name edge-tts-for-legado `
+  -p 8000:8000 `
+  -e APP__SERVER__HOST=0.0.0.0 `
+  -e APP__SERVER__PORT=8000 `
+  -v ${PWD}/config.toml:/app/config.toml:ro `
+  -v ${PWD}/logs:/app/logs `
+  edge-tts-for-legado
+```
+
+Notes:
+
+- keep the container bound to `0.0.0.0:8000`
+- change the external port through port mapping, for example `9000:8000`
+- `config.toml` must include `auth.token` unless you provide `APP__AUTH__TOKEN`
+- logs are written to `/app/logs`
+
+Compose example: [`compose.example.yaml`](./compose.example.yaml)
+
+The sample Compose file mounts `./config.toml`, so you still need to create that file and set `auth.token`.
+
+## API
+
+### `GET /`
+
+Returns a minimal import page.
+
+The page:
+
+- asks for the token
+- generates a `legado://import/httpTTS` link for the current origin
+- does not store the token in `localStorage` or `sessionStorage`
+
+### `GET /config?token=...`
+
+Returns a Legado HTTP TTS configuration payload.
+
+Authentication:
+
+- query parameter `token`
+
+If the service is behind a reverse proxy, `x-forwarded-proto` is used when building the final TTS URL.
+
+### `POST /tts`
+
+Headers:
+
+```http
+Authorization: Bearer <TOKEN>
+Content-Type: application/json
+```
+
+Body:
+
+```json
+{
+  "text": "Hello",
+  "rate": 10
+}
+```
+
+Response:
+
+- `audio/mpeg`
+
+Notes:
+
+- `text` is required
+- `rate` defaults to `10`
+- Legado rate is mapped as `(rate - 10) * 10%`
+
+## Logging
+
+The service uses `tracing`.
+
+Default behavior:
+
+- logs are written to stdout and to rotating files
+- successful startup and shutdown are `INFO`
+- missing auth headers are `INFO`
+- invalid tokens are `WARN`
+- retry attempts are `INFO`
+- final upstream failures are `ERROR`
+
+By default, logs are written under `logs/`.
+
+## Security Notes
+
+- use HTTPS in production when possible
+- treat `/config?token=...` as sensitive because the token is in the URL
+- prefer running behind a reverse proxy or another access-control layer
+- use a long random token and rotate it when needed
+- avoid posting import URLs in public chats or screenshots
+
+## Project Layout
+
+```text
+assets/               Static web assets
+src/
+  http/               HTTP-specific helpers
+  routes/             Axum handlers
+  services/           TTS and Legado config services
+  config.rs           Config loading and validation
+  logging.rs          Tracing setup
+  startup.rs          Bootstrap and shutdown
+  state.rs            Shared application state
+Dockerfile            Container image definition
+compose.example.yaml  Docker Compose example
+config.example.toml   Config example
+```
+
+## Development
+
+Format:
+
+```powershell
+cargo fmt
+```
+
+Test:
+
+```powershell
+cargo test
+```
+
+Build release:
+
+```powershell
+cargo build --release
+```
+
+## License
+
+MIT

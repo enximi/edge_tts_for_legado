@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EdgeTTS for Legado</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    :root {
+      color-scheme: light dark;
+      --bg: #f2ede4;
+      --text: #2f2a24;
+      --panel: #fffaf2;
+      --border: #d8cec0;
+      --field-border: #d2c6b6;
+      --field-bg: #fff;
+      --placeholder: #9a8f81;
+      --button-bg: #d8c1a3;
+      --button-text: #2a2117;
+      --button-disabled-bg: #e7dfd3;
+      --button-disabled-text: #8f8375;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #171411;
+        --text: #f3ede6;
+        --panel: #221d18;
+        --border: #3c332a;
+        --field-border: #4a3f34;
+        --field-bg: #191512;
+        --placeholder: #9d8f82;
+        --button-bg: #c8ab87;
+        --button-text: #20180f;
+        --button-disabled-bg: #3a322a;
+        --button-disabled-text: #8e8174;
+      }
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.4 "LXGW WenKai", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    main {
+      width: min(100%, 360px);
+      display: grid;
+      gap: 12px;
+      padding: 24px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--panel);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.1;
+    }
+
+    input,
+    button {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--field-border);
+      border-radius: 12px;
+      font: inherit;
+    }
+
+    input {
+      background: var(--field-bg);
+      color: inherit;
+    }
+
+    input::placeholder {
+      color: var(--placeholder);
+    }
+
+    button {
+      background: var(--button-bg);
+      color: var(--button-text);
+      cursor: pointer;
+    }
+
+    button:disabled {
+      background: var(--button-disabled-bg);
+      color: var(--button-disabled-text);
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>EdgeTTS for Legado</h1>
+    <input
+      id="token"
+      type="password"
+      placeholder="输入 Token"
+      autocomplete="off"
+      aria-label="访问 Token"
+    >
+    <button id="go" type="button" disabled>
+      输入 Token 后导入
+    </button>
+  </main>
+
+  <script>
+    const tokenInput = document.getElementById("token");
+    const importButton = document.getElementById("go");
+
+    function updateButtonState() {
+      const hasToken = tokenInput.value.trim().length > 0;
+
+      importButton.disabled = !hasToken;
+      importButton.textContent = hasToken ? "导入到阅读" : "输入 Token 后导入";
+    }
+
+    function buildImportUrl(token) {
+      const configUrl = new URL("/config", window.location.origin);
+      configUrl.searchParams.set("token", token);
+
+      return "legado://import/httpTTS?src=" + encodeURIComponent(configUrl.toString());
+    }
+
+    importButton.addEventListener("click", () => {
+      const token = tokenInput.value.trim();
+
+      if (!token) {
+        return;
+      }
+
+      window.location.href = buildImportUrl(token);
+    });
+
+    tokenInput.addEventListener("input", updateButtonState);
+    updateButtonState();
+  </script>
+</body>
+</html>
