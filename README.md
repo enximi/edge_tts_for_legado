@@ -6,6 +6,8 @@ A self-hosted HTTP TTS bridge for [Legado](https://github.com/gedoor/legado), po
 
 This project is for people who want to use Edge TTS inside Legado through a small service they control themselves.
 
+Docker Hub image: [`enximi/edge-tts-for-legado`](https://hub.docker.com/r/enximi/edge-tts-for-legado)
+
 ## What It Does
 
 - Exposes a `POST /tts` endpoint that returns `audio/mpeg`
@@ -62,26 +64,26 @@ git clone https://github.com/enximi/edge_tts_for_legado.git
 cd edge_tts_for_legado
 ```
 
-2. Create a config file.
+1. Create a config file.
 
 ```powershell
 Copy-Item config.example.toml config.toml
 ```
 
-3. Set a token in `config.toml`.
+1. Set a token in `config.toml`.
 
 ```toml
 [auth]
 token = "replace_this_with_a_long_random_token"
 ```
 
-4. Start the service.
+1. Start the service.
 
 ```powershell
 cargo run
 ```
 
-5. Open the import page in your phone browser.
+1. Open the import page in your phone browser.
 
 ```text
 http://<your-server>:8000/
@@ -170,13 +172,36 @@ cargo build --release
 
 ## Docker
 
-Build the image:
+### Use the Published Image
+
+Pull the published image:
+
+```powershell
+docker pull enximi/edge-tts-for-legado:latest
+```
+
+Run it with a mounted config file:
+
+```powershell
+docker run -d `
+  --name edge-tts-for-legado `
+  -p 8000:8000 `
+  -e APP__SERVER__HOST=0.0.0.0 `
+  -e APP__SERVER__PORT=8000 `
+  -v ${PWD}/config.toml:/app/config.toml:ro `
+  -v ${PWD}/logs:/app/logs `
+  enximi/edge-tts-for-legado:latest
+```
+
+### Build Locally
+
+Build the image from this repository:
 
 ```powershell
 docker build -t edge-tts-for-legado .
 ```
 
-Run it with a mounted config file:
+Run the locally built image:
 
 ```powershell
 docker run -d `
@@ -309,6 +334,11 @@ Build release:
 ```powershell
 cargo build --release
 ```
+
+Docker Hub repository overview drafts:
+
+- English: [`README.dockerhub.md`](./README.dockerhub.md)
+- Chinese: [`README.dockerhub.zh-CN.md`](./README.dockerhub.zh-CN.md)
 
 ## License
 
