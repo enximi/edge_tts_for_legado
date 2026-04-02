@@ -1,7 +1,7 @@
+# Make sure ./config.toml contains [auth].token, or provide APP__AUTH__TOKEN.
 services:
   edge-tts-for-legado:
-    build: .
-    image: edge-tts-for-legado:latest
+    image: enximi/edge-tts-for-legado:latest
     restart: unless-stopped
     ports:
       - "${HOST_PORT:-8000}:8000"
